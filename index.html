@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MC Bot — Phoenix PE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --green: #00ff88;
+    --green-dim: #00cc66;
+    --green-dark: #003322;
+    --bg: #040a06;
+    --bg2: #071209;
+    --border: #00ff8833;
+    --text: #c8ffd4;
+    --dim: #4a7a55;
+    --red: #ff4455;
+    --yellow: #ffcc00;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Scanlines */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.15) 2px,
+      rgba(0,0,0,0.15) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .container {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 520px;
+    padding: 20px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--dim);
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .title {
+    font-family: 'Orbitron', monospace;
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--green);
+    text-shadow: 0 0 20px var(--green), 0 0 40px var(--green-dim);
+    letter-spacing: 2px;
+    line-height: 1;
+    margin-bottom: 8px;
+    animation: flicker 6s infinite;
+  }
+
+  @keyframes flicker {
+    0%, 95%, 100% { opacity: 1; }
+    96% { opacity: 0.8; }
+    97% { opacity: 1; }
+    98% { opacity: 0.6; }
+    99% { opacity: 1; }
+  }
+
+  .subtitle {
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 3px;
+  }
+
+  .server-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--green-dark);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    font-size: 11px;
+    color: var(--green-dim);
+    letter-spacing: 1px;
+    margin-top: 16px;
+    position: relative;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+  }
+
+  .server-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--green);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 32px;
+    position: relative;
+    clip-path: polygon(16px 0%, 100% 0%, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0% 100%, 0% 16px);
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0,255,136,0.03) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .corner {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-color: var(--green);
+    border-style: solid;
+  }
+  .corner-tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+  .corner-tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+  .corner-bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+  .corner-br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+  .section-label {
+    font-size: 9px;
+    letter-spacing: 4px;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .field {
+    margin-bottom: 20px;
+  }
+
+  label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--dim);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  input {
+    width: 100%;
+    background: rgba(0,255,136,0.04);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 16px;
+    padding: 12px 16px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+  }
+
+  input:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 12px rgba(0,255,136,0.15), inset 0 0 8px rgba(0,255,136,0.05);
+  }
+
+  input::placeholder { color: var(--dim); }
+
+  .btn {
+    width: 100%;
+    padding: 16px;
+    background: transparent;
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+    clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%);
+    margin-top: 8px;
+  }
+
+  .btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--green);
+    transform: translateX(-101%);
+    transition: transform 0.3s ease;
+    z-index: -1;
+  }
+
+  .btn:hover::before { transform: translateX(0); }
+  .btn:hover { color: var(--bg); text-shadow: none; }
+
+  .btn:active { transform: scale(0.98); }
+
+  .btn.loading {
+    pointer-events: none;
+    color: var(--dim);
+    border-color: var(--dim);
+  }
+
+  /* Output terminal */
+  .terminal {
+    margin-top: 24px;
+    background: #020704;
+    border: 1px solid var(--border);
+    padding: 16px;
+    font-size: 12px;
+    line-height: 1.8;
+    display: none;
+    max-height: 200px;
+    overflow-y: auto;
+    position: relative;
+  }
+
+  .terminal.active { display: block; }
+
+  .terminal-bar {
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--dim);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .log-line { margin-bottom: 4px; }
+  .log-line.info { color: var(--green-dim); }
+  .log-line.success { color: var(--green); }
+  .log-line.error { color: var(--red); }
+  .log-line.warn { color: var(--yellow); }
+
+  .log-line::before {
+    content: '> ';
+    color: var(--dim);
+  }
+
+  /* Copy button */
+  .copy-section {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .copy-label {
+    font-size: 9px;
+    letter-spacing: 4px;
+    color: var(--dim);
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .cmd-box {
+    background: #020704;
+    border: 1px solid var(--border);
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--green-dim);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+
+  .cmd-box:hover { border-color: var(--green); }
+  .cmd-box span { flex: 1; word-break: break-all; }
+
+  .copy-btn {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--dim);
+    background: none;
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    cursor: pointer;
+    font-family: 'Share Tech Mono', monospace;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+
+  .copy-btn:hover { border-color: var(--green); color: var(--green); }
+  .copy-btn.copied { border-color: var(--green); color: var(--green); }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+
+  .info-cell {
+    background: rgba(0,255,136,0.03);
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+  }
+
+  .info-cell-label {
+    font-size: 8px;
+    letter-spacing: 2px;
+    color: var(--dim);
+    margin-bottom: 4px;
+  }
+
+  .info-cell-value {
+    font-size: 12px;
+    color: var(--green-dim);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="logo">▸ Bedrock Bot Manager ◂</div>
+    <div class="title">MC BOT</div>
+    <div class="subtitle">phoenix-pe network</div>
+    <div class="server-badge">6-10.phoenix-pe.net : 19135</div>
+  </div>
+
+  <div class="panel">
+    <div class="corner corner-tl"></div>
+    <div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div>
+    <div class="corner corner-br"></div>
+
+    <div class="section-label">параметры бота</div>
+
+    <div class="info-grid">
+      <div class="info-cell">
+        <div class="info-cell-label">СЕРВЕР</div>
+        <div class="info-cell-value">6-10.phoenix-pe.net</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-cell-label">ПОРТ</div>
+        <div class="info-cell-value">19135</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>имя бота (ник)</label>
+      <input type="text" id="username" placeholder="Steve_Bot" autocomplete="off" spellcheck="false">
+    </div>
+
+    <div class="field">
+      <label>пароль аккаунта</label>
+      <input type="password" id="password" placeholder="••••••••" autocomplete="new-password">
+    </div>
+
+    <button class="btn" id="genBtn" onclick="generateCommand()">
+      ▸ СГЕНЕРИРОВАТЬ КОМАНДУ
+    </button>
+
+    <div class="terminal" id="terminal">
+      <div class="terminal-bar">OUTPUT // BOT LOG</div>
+      <div id="termLines"></div>
+    </div>
+
+    <div class="copy-section" id="copySection" style="display:none">
+      <span class="copy-label">КОМАНДА ДЛЯ ЗАПУСКА</span>
+
+      <div style="margin-bottom:8px">
+        <div class="info-cell-label" style="font-size:9px;letter-spacing:2px;color:var(--dim);margin-bottom:6px;">1. УСТАНОВИТЬ ЗАВИСИМОСТИ (один раз)</div>
+        <div class="cmd-box" onclick="copyCmd('installCmd')">
+          <span id="installCmd">npm install</span>
+          <button class="copy-btn" id="copyInstall">COPY</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="info-cell-label" style="font-size:9px;letter-spacing:2px;color:var(--dim);margin-bottom:6px;">2. ЗАПУСТИТЬ БОТА</div>
+        <div class="cmd-box" onclick="copyCmd('runCmd')">
+          <span id="runCmd">node bot.js</span>
+          <button class="copy-btn" id="copyRun">COPY</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function log(msg, type = 'info') {
+  const lines = document.getElementById('termLines');
+  const line = document.createElement('div');
+  line.className = `log-line ${type}`;
+  line.textContent = msg;
+  lines.appendChild(line);
+  lines.parentElement.scrollTop = lines.parentElement.scrollHeight;
+}
+
+function generateCommand() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
+
+  // Validation
+  if (!username) {
+    showTerminal();
+    log('ОШИБКА: укажи имя бота', 'error');
+    return;
+  }
+  if (username.length < 3 || username.length > 16) {
+    showTerminal();
+    log('ОШИБКА: ник должен быть от 3 до 16 символов', 'error');
+    return;
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    showTerminal();
+    log('ОШИБКА: только буквы, цифры и _ в нике', 'error');
+    return;
+  }
+  if (!password) {
+    showTerminal();
+    log('ОШИБКА: укажи пароль аккаунта', 'error');
+    return;
+  }
+
+  showTerminal();
+  log('Инициализация конфигурации...', 'info');
+
+  setTimeout(() => log('Цель: 6-10.phoenix-pe.net:19135', 'info'), 200);
+  setTimeout(() => log(`Ник бота: ${username}`, 'info'), 400);
+  setTimeout(() => log('Протокол: Bedrock (offline mode)', 'info'), 600);
+  setTimeout(() => {
+    log('Команды сгенерированы ✓', 'success');
+
+    // Update commands
+    document.getElementById('installCmd').textContent = 'npm install';
+    document.getElementById('runCmd').textContent = `node bot.js ${username} ${password}`;
+
+    document.getElementById('copySection').style.display = 'block';
+  }, 900);
+}
+
+function showTerminal() {
+  const t = document.getElementById('terminal');
+  t.classList.add('active');
+  document.getElementById('termLines').innerHTML = '';
+}
+
+function copyCmd(id) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = id === 'installCmd'
+      ? document.getElementById('copyInstall')
+      : document.getElementById('copyRun');
+    btn.textContent = 'COPIED!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'COPY';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+// Enter key submit
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') generateCommand();
+});
+</script>
+</body>
+</html>
