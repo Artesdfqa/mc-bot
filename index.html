@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MC Bot — Phoenix PE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --green: #00ff88;
+    --green-dim: #00cc66;
+    --green-dark: #003322;
+    --bg: #040a06;
+    --bg2: #071209;
+    --border: #00ff8833;
+    --text: #c8ffd4;
+    --dim: #4a7a55;
+    --red: #ff4455;
+    --yellow: #ffcc00;
+    --blue: #44aaff;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+    position: relative;
+  }
+
+  body::before {
+    content:'';position:fixed;inset:0;
+    background-image: linear-gradient(var(--border) 1px,transparent 1px), linear-gradient(90deg,var(--border) 1px,transparent 1px);
+    background-size: 40px 40px;
+    pointer-events:none;z-index:0;
+  }
+  body::after {
+    content:'';position:fixed;inset:0;
+    background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 4px);
+    pointer-events:none;z-index:1;
+  }
+
+  .wrap { position:relative;z-index:2;width:100%;max-width:640px; }
+
+  /* Header */
+  .header { text-align:center;margin-bottom:32px; }
+  .logo { font-family:'Orbitron',monospace;font-size:10px;color:var(--dim);letter-spacing:6px;margin-bottom:10px; }
+  .title { font-family:'Orbitron',monospace;font-size:36px;font-weight:900;color:var(--green);text-shadow:0 0 24px var(--green),0 0 48px var(--green-dim);letter-spacing:2px;animation:flicker 7s infinite; }
+  .subtitle { font-size:11px;color:var(--dim);letter-spacing:3px;margin-top:6px; }
+  @keyframes flicker { 0%,95%,100%{opacity:1}96%{opacity:.7}97%{opacity:1}98.5%{opacity:.5}99%{opacity:1} }
+
+  .server-badge {
+    display:inline-flex;align-items:center;gap:7px;
+    background:var(--green-dark);border:1px solid var(--border);
+    padding:6px 16px;font-size:11px;color:var(--green-dim);letter-spacing:1px;margin-top:14px;
+    clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
+  }
+  .server-badge::before { content:'';width:6px;height:6px;background:var(--green);border-radius:50%;box-shadow:0 0 8px var(--green);animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)} }
+
+  /* Panel */
+  .panel {
+    background:var(--bg2);border:1px solid var(--border);padding:28px;
+    position:relative;margin-bottom:24px;
+    clip-path:polygon(16px 0%,100% 0%,100% calc(100% - 16px),calc(100% - 16px) 100%,0% 100%,0% 16px);
+  }
+  .panel::before { content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,255,136,.025) 0%,transparent 60%);pointer-events:none; }
+  .corner { position:absolute;width:18px;height:18px;border-color:var(--green);border-style:solid; }
+  .corner-tl{top:-1px;left:-1px;border-width:2px 0 0 2px}
+  .corner-tr{top:-1px;right:-1px;border-width:2px 2px 0 0}
+  .corner-bl{bottom:-1px;left:-1px;border-width:0 0 2px 2px}
+  .corner-br{bottom:-1px;right:-1px;border-width:0 2px 2px 0}
+
+  .sec-label { font-size:9px;letter-spacing:4px;color:var(--dim);text-transform:uppercase;margin-bottom:20px;display:flex;align-items:center;gap:10px; }
+  .sec-label::after { content:'';flex:1;height:1px;background:var(--border); }
+
+  .info-grid { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px; }
+  .info-cell { background:rgba(0,255,136,.03);border:1px solid var(--border);padding:10px 12px; }
+  .info-cell-lbl { font-size:8px;letter-spacing:2px;color:var(--dim);margin-bottom:4px; }
+  .info-cell-val { font-size:12px;color:var(--green-dim); }
+
+  .row { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+  .field { margin-bottom:16px; }
+  label { display:block;font-size:9px;letter-spacing:3px;color:var(--dim);margin-bottom:7px;text-transform:uppercase; }
+  input {
+    width:100%;background:rgba(0,255,136,.04);border:1px solid var(--border);
+    color:var(--text);font-family:'Share Tech Mono',monospace;font-size:15px;
+    padding:11px 14px;outline:none;transition:border-color .2s,box-shadow .2s;
+    clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);
+  }
+  input:focus { border-color:var(--green);box-shadow:0 0 12px rgba(0,255,136,.12),inset 0 0 6px rgba(0,255,136,.04); }
+  input::placeholder { color:var(--dim); }
+
+  .btn-row { display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:4px; }
+
+  .btn {
+    padding:14px 20px;background:transparent;border:1px solid var(--green);
+    color:var(--green);font-family:'Orbitron',monospace;font-size:12px;font-weight:700;
+    letter-spacing:3px;cursor:pointer;position:relative;overflow:hidden;
+    transition:all .25s;clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);
+  }
+  .btn::before { content:'';position:absolute;inset:0;background:var(--green);transform:translateX(-101%);transition:transform .25s;z-index:-1; }
+  .btn:hover::before { transform:translateX(0); }
+  .btn:hover { color:var(--bg); }
+  .btn:active { transform:scale(.98); }
+  .btn:disabled { pointer-events:none;color:var(--dim);border-color:var(--dim); }
+  .btn.danger { border-color:var(--red);color:var(--red); }
+  .btn.danger::before { background:var(--red); }
+  .btn.danger:hover { color:#fff; }
+
+  /* Terminal */
+  .terminal {
+    background:#020704;border:1px solid var(--border);
+    font-size:11.5px;line-height:1.75;overflow:hidden;
+    display:none;flex-direction:column;
+  }
+  .terminal.active { display:flex; }
+  .term-bar {
+    font-size:9px;letter-spacing:3px;color:var(--dim);
+    padding:10px 14px 8px;border-bottom:1px solid var(--border);
+    display:flex;justify-content:space-between;align-items:center;flex-shrink:0;
+  }
+  .term-body { padding:12px 14px;overflow-y:auto;max-height:220px;flex:1; }
+
+  .ll { margin-bottom:2px;display:flex;gap:8px; }
+  .ll .ts { color:#2a4a33;flex-shrink:0; }
+  .ll .txt { word-break:break-all; }
+  .ll.info .txt  { color:var(--green-dim); }
+  .ll.info .txt::before { content:'> ';color:var(--dim); }
+  .ll.success .txt { color:var(--green); }
+  .ll.success .txt::before { content:'✓ '; }
+  .ll.error .txt  { color:var(--red); }
+  .ll.error .txt::before  { content:'✗ '; }
+  .ll.warn .txt   { color:var(--yellow); }
+  .ll.warn .txt::before   { content:'! '; }
+  .ll.chat .txt   { color:#8abf99; }
+  .ll.chat .txt::before   { content:'» ';color:var(--dim); }
+  .ll.form .txt   { color:var(--blue); }
+  .ll.form .txt::before   { content:'⊞ ';color:var(--dim); }
+
+  /* Bots list */
+  .bots-list { display:flex;flex-direction:column;gap:10px;margin-top:4px; }
+  .bot-card {
+    background:rgba(0,255,136,.03);border:1px solid var(--border);
+    padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+    clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
+  }
+  .bot-card-left { flex:1;min-width:0; }
+  .bot-name { font-size:14px;color:var(--text);margin-bottom:3px; }
+  .bot-meta { font-size:10px;color:var(--dim);letter-spacing:1px; }
+  .status-dot {
+    width:8px;height:8px;border-radius:50%;flex-shrink:0;
+    box-shadow:0 0 6px currentColor;
+  }
+  .status-dot.connecting { background:var(--yellow);color:var(--yellow);animation:pulse 1s infinite; }
+  .status-dot.online,.status-dot.authorized { background:var(--green);color:var(--green); }
+  .status-dot.disconnected,.status-dot.error { background:var(--red);color:var(--red); }
+
+  .btn-sm {
+    padding:7px 12px;font-size:10px;letter-spacing:2px;
+    background:transparent;border:1px solid var(--red);color:var(--red);
+    font-family:'Orbitron',monospace;cursor:pointer;transition:all .2s;
+    clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);
+  }
+  .btn-sm:hover { background:var(--red);color:#fff; }
+
+  .empty { font-size:11px;color:var(--dim);text-align:center;padding:20px 0;letter-spacing:2px; }
+
+  .spinner { display:inline-block;width:8px;height:8px;border:1px solid var(--dim);border-top-color:var(--green);border-radius:50%;animation:spin .6s linear infinite; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  ::-webkit-scrollbar { width:3px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="logo">▸ Bedrock Bot Manager ◂</div>
+    <div class="title">MC BOT</div>
+    <div class="subtitle">phoenix-pe network</div>
+    <div class="server-badge">6-10.phoenix-pe.net : 19135</div>
+  </div>
+
+  <!-- Launch panel -->
+  <div class="panel" id="launchPanel">
+    <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+
+    <div class="sec-label">новый бот</div>
+
+    <div class="info-grid">
+      <div class="info-cell"><div class="info-cell-lbl">СЕРВЕР</div><div class="info-cell-val">6-10.phoenix-pe.net</div></div>
+      <div class="info-cell"><div class="info-cell-lbl">ПОРТ</div><div class="info-cell-val">19135</div></div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>ник бота</label>
+        <input type="text" id="username" placeholder="Steve_Bot" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label>пароль</label>
+        <input type="password" id="password" placeholder="••••••••">
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="startBtn" onclick="startBot()">▸ ЗАПУСТИТЬ</button>
+      <button class="btn" onclick="refreshBots()" title="Обновить список">↻</button>
+    </div>
+
+    <div class="terminal active" id="launchLog" style="margin-top:16px;">
+      <div class="term-bar"><span>LAUNCH LOG</span><span id="launchSpinner"></span></div>
+      <div class="term-body" id="launchLines"><div class="ll info"><span class="txt">Готов к запуску...</span></div></div>
+    </div>
+  </div>
+
+  <!-- Active bots -->
+  <div class="panel">
+    <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+
+    <div class="sec-label">активные боты</div>
+    <div class="bots-list" id="botsList">
+      <div class="empty" id="emptyMsg">нет активных ботов</div>
+    </div>
+  </div>
+
+  <!-- Bot log modal -->
+  <div class="panel" id="logPanel" style="display:none;">
+    <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+
+    <div class="sec-label" id="logPanelTitle">лог бота</div>
+    <div class="terminal active">
+      <div class="term-bar"><span id="logBotName">—</span><span class="spinner" id="logSpinner"></span></div>
+      <div class="term-body" id="logLines"></div>
+    </div>
+    <button class="btn danger" style="margin-top:14px;width:100%;" onclick="closeLog()">✕ ЗАКРЫТЬ ЛОГ</button>
+  </div>
+
+</div>
+
+<script>
+  let logPolling = null;
+  let currentLogBot = null;
+
+  // ── Запуск бота ────────────────────────────────────────────────────────────
+  async function startBot() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+
+    if (!username) return launchLog('Укажи ник', 'error');
+    if (!/^[a-zA-Z0-9_]{3,16}$/.test(username)) return launchLog('Ник: 3-16 символов, только буквы/цифры/_', 'error');
+    if (!password || password.length < 4) return launchLog('Пароль слишком короткий', 'error');
+
+    const btn = document.getElementById('startBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ ...';
+    setLaunchSpinner(true);
+    clearLaunchLog();
+    launchLog(`Запуск бота "${username}"...`);
+
+    try {
+      const r = await fetch('/api/start', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ username, password }),
+      });
+      const d = await r.json();
+      if (d.error) {
+        launchLog(d.error, 'error');
+      } else {
+        launchLog(d.message || 'Бот запущен', 'success');
+        launchLog('Следи за логами в списке ботов ↓', 'info');
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+        setTimeout(refreshBots, 800);
+      }
+    } catch (e) {
+      launchLog('Ошибка запроса: ' + e.message, 'error');
+    }
+
+    setLaunchSpinner(false);
+    btn.disabled = false;
+    btn.textContent = '▸ ЗАПУСТИТЬ';
+  }
+
+  // ── Список ботов ───────────────────────────────────────────────────────────
+  async function refreshBots() {
+    try {
+      const r = await fetch('/api/bots');
+      const d = await r.json();
+      renderBots(d.bots || []);
+    } catch (e) {}
+  }
+
+  function renderBots(bots) {
+    const list = document.getElementById('botsList');
+    const empty = document.getElementById('emptyMsg');
+    if (!bots.length) {
+      list.innerHTML = '<div class="empty" id="emptyMsg">нет активных ботов</div>';
+      return;
+    }
+    list.innerHTML = bots.map(b => `
+      <div class="bot-card">
+        <div class="status-dot ${b.status}"></div>
+        <div class="bot-card-left">
+          <div class="bot-name">${b.username}</div>
+          <div class="bot-meta">${statusLabel(b.status)} · ${timeAgo(b.startedAt)}</div>
+        </div>
+        <button class="btn-sm" onclick="openLog('${b.username}')">ЛОГ</button>
+        <button class="btn-sm" onclick="stopBot('${b.username}')">СТОП</button>
+      </div>
+    `).join('');
+  }
+
+  function statusLabel(s) {
+    return {connecting:'подключение...',online:'в сети',authorized:'авторизован',disconnected:'отключён',error:'ошибка'}[s] || s;
+  }
+
+  function timeAgo(iso) {
+    const sec = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (sec < 60) return sec + 'с назад';
+    if (sec < 3600) return Math.floor(sec/60) + 'м назад';
+    return Math.floor(sec/3600) + 'ч назад';
+  }
+
+  // ── Стоп ──────────────────────────────────────────────────────────────────
+  async function stopBot(username) {
+    await fetch('/api/stop', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ username }),
+    });
+    if (currentLogBot === username) closeLog();
+    refreshBots();
+  }
+
+  // ── Лог бота ──────────────────────────────────────────────────────────────
+  function openLog(username) {
+    currentLogBot = username;
+    document.getElementById('logPanel').style.display = 'block';
+    document.getElementById('logBotName').textContent = username;
+    document.getElementById('logPanelTitle').textContent = `лог — ${username}`;
+    pollLog();
+    logPolling = setInterval(pollLog, 1500);
+    document.getElementById('logPanel').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function closeLog() {
+    clearInterval(logPolling);
+    logPolling = null;
+    currentLogBot = null;
+    document.getElementById('logPanel').style.display = 'none';
+  }
+
+  async function pollLog() {
+    if (!currentLogBot) return;
+    try {
+      const r = await fetch(`/api/logs/${currentLogBot}`);
+      const d = await r.json();
+      const lines = document.getElementById('logLines');
+      lines.innerHTML = (d.logs || []).map(l => `
+        <div class="ll ${l.type || 'info'}">
+          <span class="ts">${l.ts}</span>
+          <span class="txt">${escHtml(l.msg)}</span>
+        </div>
+      `).join('');
+      lines.parentElement.scrollTop = lines.parentElement.scrollHeight;
+      const spin = document.getElementById('logSpinner');
+      if (d.status === 'disconnected' || d.status === 'error') {
+        spin.style.display = 'none';
+      }
+    } catch (e) {}
+  }
+
+  // ── Launch log helpers ─────────────────────────────────────────────────────
+  function launchLog(msg, type = 'info') {
+    const lines = document.getElementById('launchLines');
+    const d = document.createElement('div');
+    d.className = `ll ${type}`;
+    d.innerHTML = `<span class="txt">${escHtml(msg)}</span>`;
+    lines.appendChild(d);
+    lines.parentElement.scrollTop = lines.parentElement.scrollHeight;
+  }
+
+  function clearLaunchLog() {
+    document.getElementById('launchLines').innerHTML = '';
+  }
+
+  function setLaunchSpinner(on) {
+    document.getElementById('launchSpinner').innerHTML = on ? '<span class="spinner"></span>' : '';
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Polling ────────────────────────────────────────────────────────────────
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') startBot(); });
+  refreshBots();
+  setInterval(refreshBots, 5000);
+</script>
+</body>
+</html>
