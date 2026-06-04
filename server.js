@@ -10,8 +10,108 @@ const PORT = process.env.PORT || 3000;
 const HOST = "6-10.phoenix-pe.net";
 const MC_PORT = 19135;
 
+// Версии для перебора — от новой к старой
+const VERSIONS = [
+  "1.21.93", "1.21.80", "1.21.70", "1.21.60", "1.21.50",
+  "1.21.42", "1.21.30", "1.21.2", "1.21.0",
+  "1.20.80", "1.20.71", "1.20.61", "1.20.50", "1.20.40",
+  "1.20.30", "1.20.10", "1.20.0",
+  "1.19.80", "1.19.70", "1.19.63", "1.19.60", "1.19.50",
+  "1.19.40", "1.19.30", "1.19.21", "1.19.10", "1.19.1",
+];
+
 // Хранилище активных ботов: ник -> { client, logs, status }
 const bots = {};
+
+// ─── Подключение с перебором версий ───────────────────────────────────────
+function connectWithVersionFallback(username, password, entry, versions, idx = 0) {
+  if (idx >= versions.length) {
+    entry.addLog("❌ Не удалось подобрать версию. Сервер недоступен.", "error");
+    entry.status = "error";
+    delete bots[username];
+    return;
+  }
+
+  const version = versions[idx];
+  entry.addLog(`Попытка подключения v${version}...`, "info");
+
+  let client;
+  try {
+    client = bedrock.createClient({
+      host: HOST,
+      port: MC_PORT,
+      username,
+      offline: true,
+      version,
+    });
+  } catch (e) {
+    entry.addLog(`v${version}: ошибка создания клиента — ${e.message}`, "warn");
+    return connectWithVersionFallback(username, password, entry, versions, idx + 1);
+  }
+
+  entry.client = client;
+
+  // Таймаут на подключение — если за 8 сек не спавнился и не ошибка версии
+  const timeout = setTimeout(() => {
+    try { client.disconnect(); } catch (_) {}
+    entry.addLog(`v${version}: таймаут — пробуем следующую версию`, "warn");
+    connectWithVersionFallback(username, password, entry, versions, idx + 1);
+  }, 8000);
+
+  client.on("spawn", () => {
+    clearTimeout(timeout);
+    entry.versionOk = version;
+    entry.status = "online";
+    entry.addLog(`✅ Подключился! Версия: ${version}`, "success");
+
+    setTimeout(() => {
+      try {
+        client.queue("text", {
+          type: "chat",
+          needs_translation: false,
+          source_name: username,
+          xuid: "",
+          platform_chat_id: "",
+          message: `/login ${password}`,
+        });
+        entry.addLog("Отправил /login через чат", "info");
+      } catch (_) {}
+    }, 2500);
+  });
+
+  client.on("disconnect", (reason) => {
+    clearTimeout(timeout);
+    const msg = reason?.message || reason?.reason || JSON.stringify(reason) || "";
+
+    // Ошибка протокола = неверная версия → пробуем следующую
+    if (
+      msg.includes("Packet processing error") ||
+      msg.includes("outdated") ||
+      msg.includes("update") ||
+      msg.includes("version") ||
+      msg.includes("protocol") ||
+      msg.includes("ff8d") // конкретный код ошибки с сервера
+    ) {
+      entry.addLog(`v${version}: несовместима → пробуем следующую`, "warn");
+      entry.client = null;
+      connectWithVersionFallback(username, password, entry, versions, idx + 1);
+    } else {
+      entry.addLog(`❌ Отключён: ${msg}`, "error");
+      entry.status = "disconnected";
+      entry.client = null;
+    }
+  });
+
+  client.on("error", (err) => {
+    clearTimeout(timeout);
+    entry.addLog(`v${version}: ${err.message}`, "warn");
+    entry.client = null;
+    connectWithVersionFallback(username, password, entry, versions, idx + 1);
+  });
+
+  setupFormHandler(client, entry, username, password);
+  setupChatHandler(client, entry, password);
+}
 
 // ─── Запустить бота ────────────────────────────────────────────────────────
 app.post("/api/start", (req, res) => {
@@ -38,33 +138,17 @@ app.post("/api/start", (req, res) => {
     username,
     startedAt: new Date().toISOString(),
   };
-  bots[username] = entry;
 
-  function addLog(msg, type = "info") {
+  entry.addLog = function(msg, type = "info") {
     const line = { msg, type, ts: new Date().toLocaleTimeString("ru") };
-    entry.logs.push(line);
-    if (entry.logs.length > 200) entry.logs.shift();
+    this.logs.push(line);
+    if (this.logs.length > 300) this.logs.shift();
     console.log(`[${username}] ${msg}`);
-  }
+  };
 
-  addLog(`Подключение к ${HOST}:${MC_PORT}...`);
-
-  let client;
-  try {
-    client = bedrock.createClient({
-      host: HOST,
-      port: MC_PORT,
-      username,
-      offline: true,
-      version: "1.20.0",
-    });
-  } catch (e) {
-    addLog(`Ошибка создания клиента: ${e.message}`, "error");
-    delete bots[username];
-    return res.status(500).json({ error: e.message });
-  }
-
-  entry.client = client;
+  bots[username] = entry;
+  entry.addLog(`Подключение к ${HOST}:${MC_PORT}...`);
+  connectWithVersionFallback(username, password, entry, VERSIONS);
 
   client.on("spawn", () => {
     entry.status = "online";
